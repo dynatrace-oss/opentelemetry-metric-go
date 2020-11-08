@@ -31,6 +31,7 @@ import (
 )
 
 const (
+	// DefaultDynatraceURL defines the default local metrics endpoint
 	DefaultDynatraceURL = "http://127.0.0.1:14499/metrics/ingest"
 )
 
@@ -52,7 +53,6 @@ func NewExporter(opts Options) (*Exporter, error) {
 }
 
 // Options contains options for configuring the exporter.
-
 type Options struct {
 	URL      string
 	APIToken string
@@ -84,6 +84,7 @@ func (e *Exporter) ExportKindFor(*metric.Descriptor, aggregation.Kind) export.Ex
 	return export.DeltaExporter
 }
 
+// Export given CheckpointSet
 func (e *Exporter) Export(ctx context.Context, cs export.CheckpointSet) error {
 	output := ""
 	valueline := ""
@@ -218,6 +219,7 @@ func (e *Exporter) send(message string) error {
 
 }
 
+// Close the exporter
 func (e *Exporter) Close() error {
 	e.client = nil
 	return nil
