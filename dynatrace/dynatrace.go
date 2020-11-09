@@ -62,7 +62,7 @@ type Options struct {
 	MetricNameFormatter func(namespace, name string) string
 }
 
-// Exporter forwards metrics to a DataDog agent
+// Exporter forwards metrics to a Dynatrace agent
 type Exporter struct {
 	opts   Options
 	client *http.Client
