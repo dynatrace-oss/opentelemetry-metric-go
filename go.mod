@@ -1,6 +1,6 @@
-module https://github.com/dynatrace-oss/opentelemetry-metric-go
+module github.com/dynatrace-oss/opentelemetry-metric-go
 
-go 1.14
+go 1.15
 
 require (
 	go.opentelemetry.io/otel v0.13.0
