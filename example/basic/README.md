@@ -1,4 +1,4 @@
-# Basic sample to configure and use Dynatrace OpenTelementry exporter
+# Basic sample to configure and use Dynatrace OpenTelemetry exporter
 
 The sample will write a single value to `otel.dynatrace.com.golang` metric. By default, the sample
 will connect to the local Dynatrace metrics endpoint.
