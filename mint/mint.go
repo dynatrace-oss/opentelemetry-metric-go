@@ -25,10 +25,13 @@ func (d *Dimension) toString() string {
 }
 
 // SerializeDescriptor serializes a descriptor in MINT format
-func SerializeDescriptor(name, prefix string, dimensions []Dimension) string {
+func SerializeDescriptor(name, prefix string, dimensions []Dimension, tags []string) string {
 	prefixedName := normalizeMetricName(joinPrefix(name, prefix))
 
 	if len(dimensions) > 0 {
+		if len(tags) > 0 {
+			return fmt.Sprintf("%s,%s,%s", prefixedName, strings.Join(tags, ","), serializeDimensions(dimensions))
+		}
 		return fmt.Sprintf("%s,%s", prefixedName, serializeDimensions(dimensions))
 	}
 

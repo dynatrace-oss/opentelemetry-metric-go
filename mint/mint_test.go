@@ -56,6 +56,7 @@ func TestSerializeDescriptor(t *testing.T) {
 		name       string
 		prefix     string
 		dimensions []Dimension
+		tags       []string
 	}
 	tests := []struct {
 		name string
@@ -78,9 +79,19 @@ func TestSerializeDescriptor(t *testing.T) {
 			want: "metric_name,dim=\"value\"",
 		},
 		{
+			name: "Descriptor with dimension and tags",
+			args: args{name: "metric_name", dimensions: []Dimension{{key: "dim", value: "value"}}, tags: []string{"tag1=1", "tag2=2"}},
+			want: "metric_name,tag1=1,tag2=2,dim=\"value\"",
+		},
+		{
 			name: "Descriptor with prefix and dimension",
 			args: args{name: "metric_name", prefix: "prefix", dimensions: []Dimension{{key: "dim", value: "value"}}},
 			want: "prefix.metric_name,dim=\"value\"",
+		},
+		{
+			name: "Descriptor with prefix, dimension, and tags",
+			args: args{name: "metric_name", prefix: "prefix", dimensions: []Dimension{{key: "dim", value: "value"}}, tags: []string{"tag1=1", "tag2=2"}},
+			want: "prefix.metric_name,tag1=1,tag2=2,dim=\"value\"",
 		},
 		{
 			name: "Invalid prefix",
@@ -200,7 +211,7 @@ func TestSerializeDescriptor(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := SerializeDescriptor(tt.args.name, tt.args.prefix, tt.args.dimensions); got != tt.want {
+			if got := SerializeDescriptor(tt.args.name, tt.args.prefix, tt.args.dimensions, tt.args.tags); got != tt.want {
 				t.Errorf("SerializeDescriptor() = %v, want %v", got, tt.want)
 			}
 		})

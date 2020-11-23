@@ -109,7 +109,7 @@ func (e *Exporter) Export(ctx context.Context, cs export.CheckpointSet) error {
 			dimensions = append(dimensions, dim)
 		}
 
-		descriptor := mint.SerializeDescriptor(r.Descriptor().Name(), e.opts.Prefix, dimensions)
+		descriptor := mint.SerializeDescriptor(r.Descriptor().Name(), e.opts.Prefix, dimensions, e.opts.Tags)
 		if descriptor == "" {
 			e.logger.Warn(fmt.Sprintf("failed to normalize metric name: %s", r.Descriptor().Name()))
 			return nil
