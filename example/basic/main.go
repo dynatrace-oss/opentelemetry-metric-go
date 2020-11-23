@@ -20,9 +20,9 @@ import (
 	// "go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/api/global"
 	"go.opentelemetry.io/otel/api/metric"
+	"go.opentelemetry.io/otel/sdk/metric/controller/push"
 	"go.opentelemetry.io/otel/sdk/metric/processor/basic"
 	"go.opentelemetry.io/otel/sdk/metric/selector/simple"
-	"go.opentelemetry.io/otel/sdk/metric/controller/push"
 
 	"github.com/dynatrace-oss/opentelemetry-metric-go/dynatrace"
 )
@@ -43,7 +43,7 @@ func main() {
 	}
 
 	exporter, err := dynatrace.NewExporter(opts)
-	if err != nil{
+	if err != nil {
 		panic(err)
 	}
 

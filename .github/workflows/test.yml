@@ -1,0 +1,17 @@
+name: Unit Test
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '^1.15.5' # The Go version to download (if necessary) and use.
+
+      - run: go version
+      - run: go build
+      - run: test -z $(gofmt -l .)
+      - run: go test ./...
