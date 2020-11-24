@@ -24,7 +24,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/dynatrace-oss/opentelemetry-metric-go/mint"
+	"github.com/dynatrace-oss/opentelemetry-metrics-go/mint"
 
 	"go.opentelemetry.io/otel/api/metric"
 	"go.opentelemetry.io/otel/label"

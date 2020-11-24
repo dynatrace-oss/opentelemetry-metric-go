@@ -1,4 +1,4 @@
-module github.com/dynatrace-oss/opentelemetry-metric-go/example/basic
+module github.com/dynatrace-oss/opentelemetry-metrics-go/example/basic
 
 go 1.15
 

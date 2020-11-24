@@ -17,6 +17,7 @@ package main
 import (
 	"context"
 	"os"
+
 	// "go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/api/global"
 	"go.opentelemetry.io/otel/api/metric"
@@ -24,7 +25,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/metric/processor/basic"
 	"go.opentelemetry.io/otel/sdk/metric/selector/simple"
 
-	"github.com/dynatrace-oss/opentelemetry-metric-go/dynatrace"
+	"github.com/dynatrace-oss/opentelemetry-metrics-go/dynatrace"
 )
 
 func getEnv(name, def string) string {
