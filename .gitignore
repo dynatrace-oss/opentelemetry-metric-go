@@ -1,3 +1,6 @@
 example/basic/basic
 coverage.txt
 coverage.html
+
+# ignore vscode 
+.vscode
