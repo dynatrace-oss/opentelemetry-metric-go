@@ -5,6 +5,9 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/dynatrace-oss/opentelemetry-metric-go/mint"
+	"go.uber.org/zap"
 )
 
 func Test_readIndirectionFile(t *testing.T) {
@@ -115,6 +118,137 @@ func Test_readMetadataFile(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("readMetadataFile() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_readOneAgentMetadata(t *testing.T) {
+	type args struct {
+		indirectionBasename string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    []string
+		wantErr bool
+	}{
+		{
+			name: "valid case",
+			args: args{indirectionBasename: "testdata/indirection"},
+			want: []string{"key1=value1", "key2=value2", "key3=value3"},
+		},
+		{
+			name: "metadata file empty",
+			args: args{indirectionBasename: "testdata/indirection_target_empty"},
+			want: []string{},
+		},
+		{
+			name:    "indirection file empty",
+			args:    args{indirectionBasename: "testdata/indirection_empty"},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name:    "indirection file does not exist",
+			args:    args{indirectionBasename: "testdata/indirection_file_that_does_not_exist"},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name:    "indirection target does not exist",
+			args:    args{indirectionBasename: "testdata/indirection_target_nonexistent"},
+			want:    nil,
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := readOneAgentMetadata(tt.args.indirectionBasename)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("readOneAgentMetadata() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("readOneAgentMetadata() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestOneAgentMetadataEnricher_parseOneAgentMetadata(t *testing.T) {
+	log, _ := zap.NewProduction()
+	defer log.Sync()
+	type fields struct {
+		logger *zap.Logger
+	}
+	type args struct {
+		lines []string
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		want   []mint.Dimension
+	}{
+		{
+			name:   "valid case",
+			fields: fields{logger: log},
+			args:   args{[]string{"key1=value1", "key2=value2", "key3=value3"}},
+			want: []mint.Dimension{
+				mint.NewDimension("key1", "value1"),
+				mint.NewDimension("key2", "value2"),
+				mint.NewDimension("key3", "value3"),
+			},
+		},
+		{
+			name:   "pass empty list",
+			fields: fields{logger: log},
+			args:   args{[]string{}},
+			want:   []mint.Dimension{},
+		},
+		{
+			name:   "pass invalid strings",
+			fields: fields{logger: log},
+			args: args{[]string{
+				"=0x5c14d9a68d569861",
+				"otherKey=",
+				"",
+				"=",
+				"===",
+			}},
+			want: []mint.Dimension{},
+		},
+		{
+			name:   "pass mixed strings",
+			fields: fields{logger: log},
+			args: args{[]string{
+				"invalid1",
+				"key1=value1",
+				"=invalid",
+				"key2=value2",
+				"===",
+			}},
+			want: []mint.Dimension{
+				mint.NewDimension("key1", "value1"),
+				mint.NewDimension("key2", "value2"),
+			},
+		},
+		{
+			name:   "valid tailing equal signs",
+			fields: fields{logger: log},
+			args:   args{[]string{"key1=value1=="}},
+			want:   []mint.Dimension{mint.NewDimension("key1", "value1==")},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			o := OneAgentMetadataEnricher{
+				logger: tt.fields.logger,
+			}
+			if got := o.parseOneAgentMetadata(tt.args.lines); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("OneAgentMetadataEnricher.parseOneAgentMetadata() = %v, want %v", got, tt.want)
 			}
 		})
 	}

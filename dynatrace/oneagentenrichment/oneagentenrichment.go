@@ -14,14 +14,21 @@ import (
 
 const indirectionBasename = "dt_metadata_e617c525669e072eebe3d0f08212e8f2"
 
+// OneAgentMetadataEnricher contains the functionality to read and parse
+// OneAgent metadata into key-value pairs.
 type OneAgentMetadataEnricher struct {
 	logger *zap.Logger
 }
 
-func NewOneAgentMetadataEnricher(log *zap.Logger) *OneAgentMetadataEnricher {
-	return &OneAgentMetadataEnricher{logger: log}
+// NewOneAgentMetadataEnricher creates a new OneAgentMetadataEnricher with an attached logger.
+func NewOneAgentMetadataEnricher(log *zap.Logger) OneAgentMetadataEnricher {
+	return OneAgentMetadataEnricher{
+		logger: log,
+	}
 }
 
+// readIndirectionFile reads the text from the Reader line by line and
+// returns the first line that starts with the prefix.
 func readIndirectionFile(reader io.Reader, prefix string) (string, error) {
 	if reader == nil {
 		return "", errors.New("reader cannot be nil")
@@ -44,6 +51,8 @@ func readIndirectionFile(reader io.Reader, prefix string) (string, error) {
 	return indirectionFilename, nil
 }
 
+// readMetadataFile reads the actual OneAgent metadata file,
+// trimming whitespace from lines and discarding empty lines.
 func readMetadataFile(reader io.Reader) ([]string, error) {
 	if reader == nil {
 		return nil, errors.New("reader cannot be nil")
@@ -65,6 +74,10 @@ func readMetadataFile(reader io.Reader) ([]string, error) {
 	return lines, nil
 }
 
+// readOneAgentMetadata takes the basename of the properties file (without the .properties)
+// suffix. It then reads the indirection file to extract a filename starting with the basename.
+// that file is then read and parsed into an array of strings, which represent the lines of
+// that file. Errors from function calls inside this function are passed on to the caller.
 func readOneAgentMetadata(indirectionBasename string) ([]string, error) {
 	indirection, err := os.Open(fmt.Sprintf("%s.properties", indirectionBasename))
 	if err != nil {
@@ -90,6 +103,7 @@ func readOneAgentMetadata(indirectionBasename string) ([]string, error) {
 	}
 
 	content, err := readMetadataFile(metadataFile)
+
 	if err != nil {
 		// an error occurred during reading of the file
 		return nil, err
@@ -98,18 +112,9 @@ func readOneAgentMetadata(indirectionBasename string) ([]string, error) {
 	return content, nil
 }
 
-type KeyValuePair struct {
-	Key   string
-	Value string
-}
-
-func newKeyValuePair(key, value string) KeyValuePair {
-	return KeyValuePair{
-		Key:   key,
-		Value: value,
-	}
-}
-
+// parseOneAgentMetadata transforms lines into key-value pairs and discards
+// pairs that do not conform to the 'key=value' (trailing additional equal signs are added to
+// the value)
 func (o OneAgentMetadataEnricher) parseOneAgentMetadata(lines []string) []mint.Dimension {
 	result := []mint.Dimension{}
 	for _, line := range lines {
@@ -130,11 +135,12 @@ func (o OneAgentMetadataEnricher) parseOneAgentMetadata(lines []string) []mint.D
 	return result
 }
 
-// append OneAgent metadata tags to the passed slice.
+// EnrichWithMetadata appends OneAgent metadata tags to the passed slice.
+// no normalisation is applied to the dimensions, this is the callers responsibility.
 func (o OneAgentMetadataEnricher) EnrichWithMetadata(target []mint.Dimension) {
 	lines, err := readOneAgentMetadata(indirectionBasename)
 	if err != nil {
-		o.logger.Warn(fmt.Sprintf("could not read OneAgent Metadata: %s", err))
+		o.logger.Warn(fmt.Sprintf("Could not read OneAgent Metadata: %s", err))
 		return
 	}
 	for _, dim := range o.parseOneAgentMetadata(lines) {
