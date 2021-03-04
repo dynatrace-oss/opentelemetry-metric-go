@@ -2,6 +2,7 @@ package mint
 
 import (
 	"reflect"
+	"sort"
 	"testing"
 )
 
@@ -51,12 +52,56 @@ func TestDimension_toString(t *testing.T) {
 	}
 }
 
+func Test_makeUniqueDimensions(t *testing.T) {
+	type args struct {
+		dimensions []Dimension
+		tags       []Tag
+	}
+	tests := []struct {
+		name string
+		args args
+		want []string
+	}{
+		{
+			name: "Descriptor with dimension and tags",
+			args: args{
+				dimensions: []Dimension{{key: "dim", value: "value"}},
+				tags:       []Tag{NewTag("tag1", "1"), NewTag("tag2", "2")},
+			},
+			want: []string{"dim=\"value\"", "tag1=\"1\"", "tag2=\"2\""},
+		},
+		{
+			name: "Descriptor with dimension and overriding tags",
+			args: args{
+				dimensions: []Dimension{{key: "dim", value: "value"}, {key: "dim2", value: "value2"}},
+				tags:       []Tag{NewTag("tag1", "1"), NewTag("dim2", "a_different_value_2")},
+			},
+			want: []string{"dim=\"value\"", "dim2=\"a_different_value_2\"", "tag1=\"1\""},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// this is required since the hashmap we use to eliminate duplicates does not
+			// define a strict order in which the dimensions are returned. Therefore, this
+			// would produce a flaky test, that sometimes returns the order we expect and
+			// a different order at other times. By sorting, we can make sure the order of
+			// the two slices is the same.
+			got := makeUniqueDimensions(tt.args.dimensions, tt.args.tags)
+			sort.Strings(got)
+			want := tt.want
+			sort.Strings(tt.want)
+			if !reflect.DeepEqual(got, want) {
+				t.Errorf("makeUniqueDimensions() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
 func TestSerializeDescriptor(t *testing.T) {
 	type args struct {
 		name       string
 		prefix     string
 		dimensions []Dimension
-		tags       []string
+		tags       []Tag
 	}
 	tests := []struct {
 		name string
@@ -79,19 +124,9 @@ func TestSerializeDescriptor(t *testing.T) {
 			want: "metric_name,dim=\"value\"",
 		},
 		{
-			name: "Descriptor with dimension and tags",
-			args: args{name: "metric_name", dimensions: []Dimension{{key: "dim", value: "value"}}, tags: []string{"tag1=1", "tag2=2"}},
-			want: "metric_name,tag1=1,tag2=2,dim=\"value\"",
-		},
-		{
 			name: "Descriptor with prefix and dimension",
 			args: args{name: "metric_name", prefix: "prefix", dimensions: []Dimension{{key: "dim", value: "value"}}},
 			want: "prefix.metric_name,dim=\"value\"",
-		},
-		{
-			name: "Descriptor with prefix, dimension, and tags",
-			args: args{name: "metric_name", prefix: "prefix", dimensions: []Dimension{{key: "dim", value: "value"}}, tags: []string{"tag1=1", "tag2=2"}},
-			want: "prefix.metric_name,tag1=1,tag2=2,dim=\"value\"",
 		},
 		{
 			name: "Invalid prefix",

@@ -1,3 +1,16 @@
+// Copyright 2021 Dynatrace LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 package oneagentenrichment
 
 import (
@@ -28,7 +41,7 @@ func NewOneAgentMetadataEnricher(log *zap.Logger) OneAgentMetadataEnricher {
 }
 
 // readIndirectionFile reads the text from the Reader line by line and
-// returns the first line that starts with the prefix.
+// returns the first line that contains the prefix
 func readIndirectionFile(reader io.Reader, prefix string) (string, error) {
 	if reader == nil {
 		return "", errors.New("reader cannot be nil")
@@ -38,7 +51,7 @@ func readIndirectionFile(reader io.Reader, prefix string) (string, error) {
 	indirectionFilename := ""
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
-		if strings.HasPrefix(line, prefix) {
+		if strings.Contains(line, prefix) {
 			indirectionFilename = line
 			break
 		}
@@ -80,6 +93,7 @@ func readMetadataFile(reader io.Reader) ([]string, error) {
 // that file. Errors from function calls inside this function are passed on to the caller.
 func readOneAgentMetadata(indirectionBasename string) ([]string, error) {
 	indirection, err := os.Open(fmt.Sprintf("%s.properties", indirectionBasename))
+
 	if err != nil {
 		// an error occurred during opening of the file
 		return nil, err
@@ -115,8 +129,8 @@ func readOneAgentMetadata(indirectionBasename string) ([]string, error) {
 // parseOneAgentMetadata transforms lines into key-value pairs and discards
 // pairs that do not conform to the 'key=value' (trailing additional equal signs are added to
 // the value)
-func (o OneAgentMetadataEnricher) parseOneAgentMetadata(lines []string) []mint.Dimension {
-	result := []mint.Dimension{}
+func (o OneAgentMetadataEnricher) parseOneAgentMetadata(lines []string) []mint.Tag {
+	result := []mint.Tag{}
 	for _, line := range lines {
 		split := strings.SplitN(line, "=", 2)
 		if len(split) != 2 {
@@ -130,20 +144,21 @@ func (o OneAgentMetadataEnricher) parseOneAgentMetadata(lines []string) []mint.D
 			continue
 		}
 
-		result = append(result, mint.NewDimension(key, value))
+		result = append(result, mint.NewTag(key, value))
 	}
 	return result
 }
 
-// EnrichWithMetadata appends OneAgent metadata tags to the passed slice.
-// no normalisation is applied to the dimensions, this is the callers responsibility.
-func (o OneAgentMetadataEnricher) EnrichWithMetadata(target []mint.Dimension) {
+// EnrichWithOneAgentMetadata adds one agent metadata Tags to the passed slice.
+// No normalisation is done apart from trimming whitespace
+func (o OneAgentMetadataEnricher) EnrichWithOneAgentMetadata(tags []mint.Tag) {
 	lines, err := readOneAgentMetadata(indirectionBasename)
 	if err != nil {
-		o.logger.Warn(fmt.Sprintf("Could not read OneAgent Metadata: %s", err))
+		o.logger.Warn(fmt.Sprintf("Could not read OneAgent metadata: %s", err))
 		return
 	}
+
 	for _, dim := range o.parseOneAgentMetadata(lines) {
-		target = append(target, dim)
+		tags = append(tags, dim)
 	}
 }

@@ -24,6 +24,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/dynatrace-oss/opentelemetry-metric-go/dynatrace/oneagentenrichment"
 	"github.com/dynatrace-oss/opentelemetry-metric-go/mint"
 
 	"go.opentelemetry.io/otel/api/metric"
@@ -41,6 +42,7 @@ const (
 // NewExporter exports to a Dynatrace MINT API
 func NewExporter(opts Options) (*Exporter, error) {
 	if opts.URL == "" {
+		// if no url is set, use the local one agent endpoint.
 		opts.URL = DefaultDynatraceURL
 	}
 	if opts.MetricNameFormatter == nil {
@@ -52,6 +54,16 @@ func NewExporter(opts Options) (*Exporter, error) {
 
 	client := &http.Client{}
 
+	if opts.Tags == nil {
+		opts.Tags = []mint.Tag{}
+	}
+
+	// todo use a key-value pair here.
+	if opts.EnrichWithOneAgentMetadata {
+		enricher := oneagentenrichment.NewOneAgentMetadataEnricher(opts.Logger)
+		enricher.EnrichWithOneAgentMetadata(opts.Tags)
+	}
+
 	return &Exporter{
 		client: client,
 		opts:   opts,
@@ -61,11 +73,12 @@ func NewExporter(opts Options) (*Exporter, error) {
 
 // Options contains options for configuring the exporter.
 type Options struct {
-	URL      string
-	APIToken string
-	Prefix   string
-	Tags     []string
-	Logger   *zap.Logger
+	URL                        string
+	APIToken                   string
+	Prefix                     string
+	Tags                       []mint.Tag
+	Logger                     *zap.Logger
+	EnrichWithOneAgentMetadata bool
 
 	MetricNameFormatter func(namespace, name string) string
 }
@@ -94,8 +107,7 @@ func (e *Exporter) ExportKindFor(*metric.Descriptor, aggregation.Kind) export.Ex
 
 // Export given CheckpointSet
 func (e *Exporter) Export(ctx context.Context, cs export.CheckpointSet) error {
-	// TODO tags
-	// TODO normalize
+	// TODO normalize. see mint package.
 	lines := []string{}
 
 	err := cs.ForEach(e, func(r export.Record) error {
@@ -109,6 +121,7 @@ func (e *Exporter) Export(ctx context.Context, cs export.CheckpointSet) error {
 			dimensions = append(dimensions, dim)
 		}
 
+		// todo normalize dimensions and tags.
 		descriptor := mint.SerializeDescriptor(r.Descriptor().Name(), e.opts.Prefix, dimensions, e.opts.Tags)
 		if descriptor == "" {
 			e.logger.Warn(fmt.Sprintf("failed to normalize metric name: %s", r.Descriptor().Name()))

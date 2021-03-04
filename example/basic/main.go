@@ -16,8 +16,11 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"math/rand"
 	"os"
-	// "go.opentelemetry.io/otel"
+	"time"
+
 	"go.opentelemetry.io/otel/api/global"
 	"go.opentelemetry.io/otel/api/metric"
 	"go.opentelemetry.io/otel/sdk/metric/controller/push"
@@ -27,11 +30,8 @@ import (
 	"github.com/dynatrace-oss/opentelemetry-metric-go/dynatrace"
 )
 
-func getEnv(name, def string) string {
-	if value, exists := os.LookupEnv(name); exists {
-		return value
-	}
-	return def
+func getRandomFloat(min, max float64) float64 {
+	return rand.Float64()*(max-min) + min
 }
 
 func main() {
@@ -41,6 +41,8 @@ func main() {
 		opts.APIToken = token
 		opts.URL = os.Getenv("ENDPOINT")
 	}
+
+	opts.EnrichWithOneAgentMetadata = true
 
 	exporter, err := dynatrace.NewExporter(opts)
 	if err != nil {
@@ -65,5 +67,11 @@ func main() {
 	global.SetMeterProvider(pusher.MeterProvider())
 	meter := global.Meter("otel.dynatrace.com/basic")
 	vr := metric.Must(meter).NewFloat64ValueRecorder("otel.dynatrace.com.golang")
-	vr.Record(context.Background(), 1.0)
+
+	for {
+		value := getRandomFloat(0, 15.)
+		fmt.Printf("recording %.4f.\n", value)
+		vr.Record(context.Background(), value)
+		time.Sleep(1 * time.Second)
+	}
 }

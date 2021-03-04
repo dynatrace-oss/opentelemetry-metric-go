@@ -7,12 +7,33 @@ import (
 	"strings"
 )
 
+type Tag struct {
+	Key   string
+	Value string
+}
+
+func NewTag(key, value string) Tag {
+	return Tag{Key: key, Value: value}
+}
+
+func (t Tag) String() string {
+	return fmt.Sprintf("%s=%s", t.Key, t.Value)
+}
+
+func JoinTags(tags []Tag, sep string) string {
+	stringSlice := []string{}
+	for _, tag := range tags {
+		stringSlice = append(stringSlice, tag.String())
+	}
+	return strings.Join(stringSlice, sep)
+}
+
 type Dimension struct {
 	key   string
 	value string
 }
 
-// NewDimension constructs a Dimension from a key-value pair
+// NewDimension constructs a Dimension from a key-value pair`
 func NewDimension(key, value string) Dimension {
 	return Dimension{
 		key:   key,
@@ -24,15 +45,45 @@ func (d *Dimension) toString() string {
 	return fmt.Sprintf("%s=\"%s\"", d.key, d.value)
 }
 
-// SerializeDescriptor serializes a descriptor in MINT format
-func SerializeDescriptor(name, prefix string, dimensions []Dimension, tags []string) string {
-	prefixedName := normalizeMetricName(joinPrefix(name, prefix))
+func normalizeDimensionValue(str string) string {
+	// todo, replace control characters and escape [,= \\]
+	return fmt.Sprintf("\"%s\"", str)
+}
 
-	if len(dimensions) > 0 {
-		if len(tags) > 0 {
-			return fmt.Sprintf("%s,%s,%s", prefixedName, strings.Join(tags, ","), serializeDimensions(dimensions))
+func normalizeDimensionKey(str string) string {
+	//todo
+	return str
+}
+
+func makeUniqueDimensions(dimensions []Dimension, tags []Tag) []string {
+	tagMap := make(map[string]string)
+	if dimensions != nil {
+		for _, dim := range dimensions {
+			tagMap[normalizeDimensionKey(dim.key)] = normalizeDimensionValue(dim.value)
 		}
-		return fmt.Sprintf("%s,%s", prefixedName, serializeDimensions(dimensions))
+	}
+
+	if tags != nil {
+		// overwrites tags with the same key with dynatrace OneAgent data
+		for _, tag := range tags {
+			tagMap[normalizeDimensionKey(tag.Key)] = normalizeDimensionValue(tag.Value)
+		}
+	}
+
+	strSlice := []string{}
+	for k, v := range tagMap {
+		strSlice = append(strSlice, fmt.Sprintf("%s=%s", k, v))
+	}
+
+	return strSlice
+}
+
+// SerializeDescriptor serializes a descriptor in MINT format
+func SerializeDescriptor(name, prefix string, dimensions []Dimension, tags []Tag) string {
+	prefixedName := normalizeMetricName(joinPrefix(name, prefix))
+	uniqueDims := makeUniqueDimensions(dimensions, tags)
+	if len(uniqueDims) > 0 {
+		return fmt.Sprintf("%s,%s", prefixedName, strings.Join(uniqueDims, ","))
 	}
 
 	return prefixedName
