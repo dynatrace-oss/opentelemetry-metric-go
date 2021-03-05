@@ -203,23 +203,23 @@ func TestOneAgentMetadataEnricher_parseOneAgentMetadata(t *testing.T) {
 		name   string
 		fields fields
 		args   args
-		want   []mint.Dimension
+		want   []mint.Tag
 	}{
 		{
 			name:   "valid case",
 			fields: fields{logger: log},
 			args:   args{[]string{"key1=value1", "key2=value2", "key3=value3"}},
-			want: []mint.Dimension{
-				mint.NewDimension("key1", "value1"),
-				mint.NewDimension("key2", "value2"),
-				mint.NewDimension("key3", "value3"),
+			want: []mint.Tag{
+				mint.NewTag("key1", "value1"),
+				mint.NewTag("key2", "value2"),
+				mint.NewTag("key3", "value3"),
 			},
 		},
 		{
 			name:   "pass empty list",
 			fields: fields{logger: log},
 			args:   args{[]string{}},
-			want:   []mint.Dimension{},
+			want:   []mint.Tag{},
 		},
 		{
 			name:   "pass invalid strings",
@@ -231,7 +231,7 @@ func TestOneAgentMetadataEnricher_parseOneAgentMetadata(t *testing.T) {
 				"=",
 				"===",
 			}},
-			want: []mint.Dimension{},
+			want: []mint.Tag{},
 		},
 		{
 			name:   "pass mixed strings",
@@ -243,16 +243,16 @@ func TestOneAgentMetadataEnricher_parseOneAgentMetadata(t *testing.T) {
 				"key2=value2",
 				"===",
 			}},
-			want: []mint.Dimension{
-				mint.NewDimension("key1", "value1"),
-				mint.NewDimension("key2", "value2"),
+			want: []mint.Tag{
+				mint.NewTag("key1", "value1"),
+				mint.NewTag("key2", "value2"),
 			},
 		},
 		{
 			name:   "valid tailing equal signs",
 			fields: fields{logger: log},
 			args:   args{[]string{"key1=value1=="}},
-			want:   []mint.Dimension{mint.NewDimension("key1", "value1==")},
+			want:   []mint.Tag{mint.NewTag("key1", "value1==")},
 		},
 	}
 	for _, tt := range tests {
