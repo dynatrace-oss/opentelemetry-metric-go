@@ -61,7 +61,9 @@ func NewExporter(opts Options) (*Exporter, error) {
 	// todo use a key-value pair here.
 	if opts.EnrichWithOneAgentMetadata {
 		enricher := oneagentenrichment.NewOneAgentMetadataEnricher(opts.Logger)
-		enricher.EnrichWithOneAgentMetadata(opts.Tags)
+		for _, tag := range enricher.GetOneAgentMetadata() {
+			opts.Tags = append(opts.Tags, tag)
+		}
 	}
 
 	return &Exporter{

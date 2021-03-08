@@ -149,16 +149,18 @@ func (o OneAgentMetadataEnricher) parseOneAgentMetadata(lines []string) []mint.T
 	return result
 }
 
-// EnrichWithOneAgentMetadata adds one agent metadata Tags to the passed slice.
+// GetOneAgentMetadata reads the metadata and returns it as a slice of Tags.
 // No normalisation is done apart from trimming whitespace
-func (o OneAgentMetadataEnricher) EnrichWithOneAgentMetadata(tags []mint.Tag) {
+func (o OneAgentMetadataEnricher) GetOneAgentMetadata() []mint.Tag {
+	tags := []mint.Tag{}
 	lines, err := readOneAgentMetadata(indirectionBasename)
 	if err != nil {
 		o.logger.Warn(fmt.Sprintf("Could not read OneAgent metadata: %s", err))
-		return
+		return tags
 	}
 
 	for _, dim := range o.parseOneAgentMetadata(lines) {
 		tags = append(tags, dim)
 	}
+	return tags
 }
