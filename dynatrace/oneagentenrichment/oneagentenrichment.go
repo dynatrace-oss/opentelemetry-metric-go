@@ -92,8 +92,10 @@ func readMetadataFile(reader io.Reader) ([]string, error) {
 // that file is then read and parsed into an array of strings, which represent the lines of
 // that file. Errors from function calls inside this function are passed on to the caller.
 func readOneAgentMetadata(indirectionBasename string) ([]string, error) {
+	// Currently, this only works on Windows hosts, since the indirection on Linux
+	// is based on libc. As Go does not use libc to open files, this doesnt currently
+	// work on Linux hosts.
 	indirection, err := os.Open(fmt.Sprintf("%s.properties", indirectionBasename))
-
 	if err != nil {
 		// an error occurred during opening of the file
 		return nil, err
