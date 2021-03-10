@@ -66,7 +66,7 @@ func main() {
 
 	global.SetMeterProvider(pusher.MeterProvider())
 	meter := global.Meter("otel.dynatrace.com/basic")
-	vr := metric.Must(meter).NewFloat64ValueRecorder("otel.dynatrace.com.golang")
+	vr := metric.Must(meter).NewFloat64ValueRecorder("otel.golang.example_valuerecorder")
 
 	for {
 		value := getRandomFloat(0, 15.)
