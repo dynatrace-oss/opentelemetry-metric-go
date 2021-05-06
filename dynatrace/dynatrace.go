@@ -21,11 +21,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"regexp"
 	"strings"
 
-	"github.com/dynatrace-oss/opentelemetry-metric-go/mint"
-
+	dtMetric "github.com/dynatrace-oss/dynatrace-metric-utils-go/metric"
+	"github.com/dynatrace-oss/dynatrace-metric-utils-go/metric/dimensions"
 	"go.opentelemetry.io/otel/api/metric"
 	"go.opentelemetry.io/otel/label"
 	export "go.opentelemetry.io/otel/sdk/export/metric"
@@ -77,12 +76,6 @@ type Exporter struct {
 	logger *zap.Logger
 }
 
-var (
-	reNameAllowedCharList = regexp.MustCompile("[^A-Za-z0-9.-]+")
-	maxDimKeyLen          = 100
-	maxMetricKeyLen       = 250
-)
-
 func defaultFormatter(namespace, name string) string {
 	return name
 }
@@ -99,67 +92,44 @@ func (e *Exporter) Export(ctx context.Context, cs export.CheckpointSet) error {
 	lines := []string{}
 
 	err := cs.ForEach(e, func(r export.Record) error {
-		agg := r.Aggregation()
-
 		itr := label.NewMergeIterator(r.Labels(), r.Resource().LabelSet())
-		dimensions := []mint.Dimension{}
+		dims := []dimensions.Dimension{}
 		for itr.Next() {
 			label := itr.Label()
-			dim := mint.NewDimension(string(label.Key), label.Value.Emit())
-			dimensions = append(dimensions, dim)
+			dims = append(dims, dimensions.NewDimension(string(label.Key), label.Value.Emit()))
 		}
 
-		descriptor := mint.SerializeDescriptor(r.Descriptor().Name(), e.opts.Prefix, dimensions, e.opts.Tags)
-		if descriptor == "" {
-			e.logger.Warn(fmt.Sprintf("failed to normalize metric name: %s", r.Descriptor().Name()))
+		valOpt, err := getValueOption(r)
+
+		if err != nil {
+			e.logger.Warn(fmt.Sprintf("failed to normalize metric: %s - %s", r.Descriptor().Name(), err.Error()))
 			return nil
 		}
 
-		switch agg := agg.(type) {
-		case aggregation.MinMaxSumCount:
-			min, err := agg.Min()
-			if err != nil {
-				return fmt.Errorf("error getting min for %s: %w", descriptor, err)
-			}
+		metric, err := dtMetric.NewMetric(
+			r.Descriptor().Name(),
+			dtMetric.WithPrefix(e.opts.Prefix),
+			dtMetric.WithDimensions(dimensions.MergeLists(dimensions.NewNormalizedDimensionList(dims...))),
+			valOpt,
+		)
 
-			max, err := agg.Max()
-			if err != nil {
-				return fmt.Errorf("error getting max for %s: %w", descriptor, err)
-			}
-
-			sum, err := agg.Sum()
-			if err != nil {
-				return fmt.Errorf("error getting sum for %s: %w", descriptor, err)
-			}
-
-			count, err := agg.Count()
-			if err != nil {
-				return fmt.Errorf("error getting count for %s: %w", descriptor, err)
-			}
-
-			switch r.Descriptor().NumberKind() {
-			case metric.Float64NumberKind:
-				lines = append(lines, mint.SerializeRecord(descriptor, mint.SerializeDoubleSummaryValue(min.AsFloat64(), max.AsFloat64(), sum.AsFloat64(), count)))
-			case metric.Int64NumberKind:
-				lines = append(lines, mint.SerializeRecord(descriptor, mint.SerializeIntSummaryValue(min.AsInt64(), max.AsInt64(), sum.AsInt64(), count)))
-			}
-
-		case aggregation.Sum:
-			val, err := agg.Sum()
-			if err != nil {
-				return fmt.Errorf("error getting LastValue for %s: %w", descriptor, err)
-			}
-
-			switch r.Descriptor().NumberKind() {
-			case metric.Float64NumberKind:
-				lines = append(lines, mint.SerializeRecord(descriptor, mint.SerializeDoubleCountValue(val.AsFloat64())))
-			case metric.Int64NumberKind:
-				lines = append(lines, mint.SerializeRecord(descriptor, mint.SerializeIntCountValue(val.AsInt64())))
-			}
+		if err != nil {
+			e.logger.Warn(fmt.Sprintf("failed to normalize metric: %s - %s", r.Descriptor().Name(), err.Error()))
+			return nil
 		}
+
+		line, err := metric.Serialize()
+
+		if err != nil {
+			e.logger.Warn(fmt.Sprintf("failed to serialize metric: %s - %s", r.Descriptor().Name(), err.Error()))
+			return nil
+		}
+
+		lines = append(lines, line)
 
 		return nil
 	})
+
 	if err != nil {
 		return fmt.Errorf("error generating metric lines: %s", err.Error())
 	}
@@ -171,6 +141,53 @@ func (e *Exporter) Export(ctx context.Context, cs export.CheckpointSet) error {
 		}
 	}
 	return nil
+}
+
+func getValueOption(r export.Record) (dtMetric.MetricOption, error) {
+	switch agg := r.Aggregation().(type) {
+	case aggregation.MinMaxSumCount:
+		min, err := agg.Min()
+		if err != nil {
+			return nil, fmt.Errorf("error getting min for %s: %w", r.Descriptor().Name(), err)
+		}
+
+		max, err := agg.Max()
+		if err != nil {
+			return nil, fmt.Errorf("error getting max for %s: %w", r.Descriptor().Name(), err)
+		}
+
+		sum, err := agg.Sum()
+		if err != nil {
+			return nil, fmt.Errorf("error getting sum for %s: %w", r.Descriptor().Name(), err)
+		}
+
+		count, err := agg.Count()
+		if err != nil {
+			return nil, fmt.Errorf("error getting count for %s: %w", r.Descriptor().Name(), err)
+		}
+
+		switch r.Descriptor().NumberKind() {
+		case metric.Float64NumberKind:
+			return dtMetric.WithFloatSummaryValue(min.AsFloat64(), max.AsFloat64(), sum.AsFloat64(), count), nil
+		case metric.Int64NumberKind:
+			return dtMetric.WithIntSummaryValue(min.AsInt64(), max.AsInt64(), sum.AsInt64(), count), nil
+		}
+
+	case aggregation.Sum:
+		val, err := agg.Sum()
+		if err != nil {
+			return nil, fmt.Errorf("error getting LastValue for %s: %w", r.Descriptor().Name(), err)
+		}
+
+		switch r.Descriptor().NumberKind() {
+		case metric.Float64NumberKind:
+			return dtMetric.WithFloatCounterValueDelta(val.AsFloat64()), nil
+		case metric.Int64NumberKind:
+			return dtMetric.WithIntCounterValueDelta(val.AsInt64()), nil
+		}
+	}
+
+	return nil, fmt.Errorf("unknown aggregation for %s: %s", r.Descriptor().Name(), r.Aggregation().Kind().String())
 }
 
 func (e *Exporter) send(message string) error {

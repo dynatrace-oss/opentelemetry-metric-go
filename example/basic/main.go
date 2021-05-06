@@ -17,6 +17,7 @@ package main
 import (
 	"context"
 	"os"
+
 	// "go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/api/global"
 	"go.opentelemetry.io/otel/api/metric"
