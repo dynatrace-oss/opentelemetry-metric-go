@@ -25,6 +25,7 @@ import (
 
 	dtMetric "github.com/dynatrace-oss/dynatrace-metric-utils-go/metric"
 	"github.com/dynatrace-oss/dynatrace-metric-utils-go/metric/dimensions"
+	"github.com/dynatrace-oss/dynatrace-metric-utils-go/oneagentenrichment"
 	"go.opentelemetry.io/otel/api/metric"
 	"go.opentelemetry.io/otel/label"
 	export "go.opentelemetry.io/otel/sdk/export/metric"
@@ -37,7 +38,7 @@ const (
 	DefaultDynatraceURL = "http://127.0.0.1:14499/metrics/ingest"
 )
 
-// NewExporter exports to a Dynatrace MINT API
+// NewExporter exports to the Dynatrace Metrics V2 API
 func NewExporter(opts Options) (*Exporter, error) {
 	if opts.URL == "" {
 		opts.URL = DefaultDynatraceURL
@@ -51,29 +52,37 @@ func NewExporter(opts Options) (*Exporter, error) {
 
 	client := &http.Client{}
 
+	defaultDimensions := dimensions.MergeLists(
+		oneagentenrichment.GetOneAgentMetadata(),
+		dimensions.NewNormalizedDimensionList(dimensions.NewDimension("dt.metrics.source", "opentelemetry")),
+		dimensions.NewNormalizedDimensionList(opts.DefaultDimensions...),
+	)
+
 	return &Exporter{
-		client: client,
-		opts:   opts,
-		logger: opts.Logger,
+		client:            client,
+		opts:              opts,
+		defaultDimensions: defaultDimensions,
+		logger:            opts.Logger,
 	}, nil
 }
 
 // Options contains options for configuring the exporter.
 type Options struct {
-	URL      string
-	APIToken string
-	Prefix   string
-	Tags     []string
-	Logger   *zap.Logger
+	URL               string
+	APIToken          string
+	Prefix            string
+	DefaultDimensions []dimensions.Dimension
+	Logger            *zap.Logger
 
 	MetricNameFormatter func(namespace, name string) string
 }
 
 // Exporter forwards metrics to a Dynatrace agent
 type Exporter struct {
-	opts   Options
-	client *http.Client
-	logger *zap.Logger
+	opts              Options
+	defaultDimensions dimensions.NormalizedDimensionList
+	client            *http.Client
+	logger            *zap.Logger
 }
 
 func defaultFormatter(namespace, name string) string {
@@ -109,7 +118,12 @@ func (e *Exporter) Export(ctx context.Context, cs export.CheckpointSet) error {
 		metric, err := dtMetric.NewMetric(
 			r.Descriptor().Name(),
 			dtMetric.WithPrefix(e.opts.Prefix),
-			dtMetric.WithDimensions(dimensions.MergeLists(dimensions.NewNormalizedDimensionList(dims...))),
+			dtMetric.WithDimensions(
+				dimensions.MergeLists(
+					dimensions.NewNormalizedDimensionList(e.opts.DefaultDimensions...),
+					dimensions.NewNormalizedDimensionList(dims...),
+				),
+			),
 			valOpt,
 		)
 

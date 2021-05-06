@@ -78,4 +78,4 @@ The `Prefix` field specifies an optional prefix, which is prepended to each metr
 
 #### Default Labels/Dimensions
 
-The `Tags` field can be used to optionally specify a list of key/value pairs, which will be added as additional labels/dimensions to all data points.
+The `DefaultDimensions` field can be used to optionally specify a list of key/value pairs, which will be added as additional labels/dimensions to all data points.
