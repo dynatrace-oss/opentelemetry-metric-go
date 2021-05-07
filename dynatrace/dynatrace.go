@@ -77,6 +77,11 @@ type Options struct {
 	MetricNameFormatter func(namespace, name string) string
 }
 
+// Create a new dimension for use in the DefaultDimensions option
+func NewDimension(key, value string) dimensions.Dimension {
+	return dimensions.NewDimension(key, value)
+}
+
 // Exporter forwards metrics to a Dynatrace agent
 type Exporter struct {
 	opts              Options
