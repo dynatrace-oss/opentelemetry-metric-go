@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	dtMetric "github.com/dynatrace-oss/dynatrace-metric-utils-go/metric"
+	"github.com/dynatrace-oss/dynatrace-metric-utils-go/metric/apiconstants"
 	"github.com/dynatrace-oss/dynatrace-metric-utils-go/metric/dimensions"
 	"github.com/dynatrace-oss/dynatrace-metric-utils-go/oneagentenrichment"
 	"go.opentelemetry.io/otel/api/metric"
@@ -33,15 +34,10 @@ import (
 	"go.uber.org/zap"
 )
 
-const (
-	// DefaultDynatraceURL defines the default local metrics endpoint
-	DefaultDynatraceURL = "http://127.0.0.1:14499/metrics/ingest"
-)
-
 // NewExporter exports to the Dynatrace Metrics V2 API
 func NewExporter(opts Options) (*Exporter, error) {
 	if opts.URL == "" {
-		opts.URL = DefaultDynatraceURL
+		opts.URL = apiconstants.GetDefaultOneAgentEndpoint()
 	}
 	if opts.MetricNameFormatter == nil {
 		opts.MetricNameFormatter = defaultFormatter
