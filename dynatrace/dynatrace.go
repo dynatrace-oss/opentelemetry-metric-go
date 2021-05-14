@@ -148,13 +148,19 @@ func (e *Exporter) Export(ctx context.Context, cs export.CheckpointSet) error {
 	if err != nil {
 		return fmt.Errorf("error generating metric lines: %s", err.Error())
 	}
-	output := strings.Join(lines, "\n")
-	if output != "" {
-		err = e.send(output)
-		if err != nil {
-			return fmt.Errorf("error processing data:, %s", err.Error())
+	limit := apiconstants.GetPayloadLinesLimit()
+	for i := 0; i < len(lines); i += limit {
+		batch := lines[i:min(i+limit, len(lines))]
+
+		output := strings.Join(batch, "\n")
+		if output != "" {
+			err = e.send(output)
+			if err != nil {
+				return fmt.Errorf("error processing data:, %s", err.Error())
+			}
 		}
 	}
+
 	return nil
 }
 
@@ -260,4 +266,11 @@ type metricsResponse struct {
 	Ok      int64  `json:"linesOk"`
 	Invalid int64  `json:"linesInvalid"`
 	Error   string `json:"error"`
+}
+
+func min(a, b int) int {
+	if a <= b {
+		return a
+	}
+	return b
 }
