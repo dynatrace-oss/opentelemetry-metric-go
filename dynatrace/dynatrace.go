@@ -48,17 +48,19 @@ func NewExporter(opts Options) (*Exporter, error) {
 
 	client := &http.Client{}
 
-	defaultDimensions := dimensions.MergeLists(
-		oneagentenrichment.GetOneAgentMetadata(),
+	constantDimensions := dimensions.MergeLists(
 		dimensions.NewNormalizedDimensionList(dimensions.NewDimension("dt.metrics.source", "opentelemetry")),
-		dimensions.NewNormalizedDimensionList(opts.DefaultDimensions...),
+		oneagentenrichment.GetOneAgentMetadata(),
 	)
 
+	defaultDimensions := dimensions.NewNormalizedDimensionList(opts.DefaultDimensions...)
+
 	return &Exporter{
-		client:            client,
-		opts:              opts,
-		defaultDimensions: defaultDimensions,
-		logger:            opts.Logger,
+		client:             client,
+		opts:               opts,
+		defaultDimensions:  defaultDimensions,
+		constantDimensions: constantDimensions,
+		logger:             opts.Logger,
 	}, nil
 }
 
@@ -80,10 +82,11 @@ func NewDimension(key, value string) dimensions.Dimension {
 
 // Exporter forwards metrics to a Dynatrace agent
 type Exporter struct {
-	opts              Options
-	defaultDimensions dimensions.NormalizedDimensionList
-	client            *http.Client
-	logger            *zap.Logger
+	opts               Options
+	defaultDimensions  dimensions.NormalizedDimensionList
+	constantDimensions dimensions.NormalizedDimensionList
+	client             *http.Client
+	logger             *zap.Logger
 }
 
 func defaultFormatter(namespace, name string) string {
@@ -121,8 +124,9 @@ func (e *Exporter) Export(ctx context.Context, cs export.CheckpointSet) error {
 			dtMetric.WithPrefix(e.opts.Prefix),
 			dtMetric.WithDimensions(
 				dimensions.MergeLists(
-					dimensions.NewNormalizedDimensionList(e.opts.DefaultDimensions...),
+					e.defaultDimensions,
 					dimensions.NewNormalizedDimensionList(dims...),
+					e.constantDimensions,
 				),
 			),
 			valOpt,
