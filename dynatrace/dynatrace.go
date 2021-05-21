@@ -34,7 +34,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// NewExporter exports to the Dynatrace Metrics V2 API
+// NewExporter creates an exporter for the Dynatrace Metrics v2 API
 func NewExporter(opts Options) (*Exporter, error) {
 	if opts.URL == "" {
 		opts.URL = apiconstants.GetDefaultOneAgentEndpoint()

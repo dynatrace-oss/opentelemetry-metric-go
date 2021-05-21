@@ -84,6 +84,7 @@ The `DefaultDimensions` field can be used to optionally specify a list of key/va
 
 If running on a host with a running OneAgent, the exporter will export metadata collected by the OneAgent to the Dynatrace endpoint.
 This typically consists of the Dynatrace host ID and process group ID.
+More information on the underlying feature used by the exporter can be found in the [Dynatrace documentation](https://www.dynatrace.com/support/help/how-to-use-dynatrace/metrics/metric-ingestion/ingestion-methods/enrich-metrics/).
 If no Dynatrace API endpoint is set, the default exporter endpoint will be the OneAgent endpoint, and this option will be set automatically.
 Therefore, if no endpoint is specified, a OneAgent is assumed to be running and exported to, including metadata.
 
