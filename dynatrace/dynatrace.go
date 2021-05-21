@@ -220,7 +220,7 @@ func (e *Exporter) send(message string) error {
 
 	req.Header.Add("Content-Type", "text/plain; charset=UTF-8")
 	req.Header.Add("Authorization", "Api-Token "+e.opts.APIToken)
-	req.Header.Add("User-Agent", "opentelemetry-collector")
+	req.Header.Add("User-Agent", "opentelemetry-metric-go")
 
 	resp, err := e.client.Do(req)
 	if err != nil {
