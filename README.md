@@ -1,12 +1,9 @@
 # Dynatrace OpenTelemetry Metrics Exporter for Go
 
-> This project is developed and maintained by Dynatrace R&D.
-Currently, this is a prototype and not intended for production use.
-It is not covered by Dynatrace support.
-
-This exporter plugs into the OpenTelemetry Metrics SDK for Go, which is in alpha/preview state and neither considered stable nor complete as of this writing.
-
-See [open-telemetry/opentelemetry-go](https://github.com/open-telemetry/opentelemetry-go) for the current state of the OpenTelemetry SDK for Go.
+> This exporter is based on the OpenTelemetry Metrics SDK for Go, which is currently in an alpha state and neither considered stable nor complete as of this writing.
+> As such, this exporter is not intended for production use until the underlying OpenTelemetry Metrics API and SDK are stable.
+> See [open-telemetry/opentelemetry-go](https://github.com/open-telemetry/opentelemetry-go) for the current state of the OpenTelemetry SDK for Go.
+> 
 ## Getting started
 
 The general setup of OpenTelemetry Go is explained in the official [Getting Started Guide](https://github.com/open-telemetry/opentelemetry-go/blob/master/README.md#getting-started).
