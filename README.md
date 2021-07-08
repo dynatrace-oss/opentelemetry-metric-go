@@ -77,11 +77,11 @@ The `Prefix` field specifies an optional prefix, which is prepended to each metr
 
 The `DefaultDimensions` field can be used to optionally specify a list of key/value pairs, which will be added as additional labels/dimensions to all data points.
 
-#### DisableOneAgentMetadataEnrichment
+#### DisableDynatraceMetadataEnrichment
 
-The `DisableOneAgentMetadataEnrichment` can be used to disable the OneAgent metadata detection described below.
+The `DisableDynatraceMetadataEnrichment` can be used to disable the Dynatrace metadata detection described below.
 
-## OneAgent Metadata Enrichment
+## Dynatrace Metadata Enrichment
 
 If running on a host with a running OneAgent, the exporter will export metadata collected by the OneAgent to the Dynatrace endpoint.
 This typically consists of the Dynatrace host ID and process group ID.

@@ -50,7 +50,7 @@ func NewExporter(opts Options) (*Exporter, error) {
 
 	staticDimensions := dimensions.NewNormalizedDimensionList(dimensions.NewDimension("dt.metrics.source", "opentelemetry"))
 
-	if !opts.DisableOneAgentMetadataEnrichment {
+	if !opts.DisableDynatraceMetadataEnrichment {
 		staticDimensions = dimensions.MergeLists(staticDimensions, oneagentenrichment.GetOneAgentMetadata())
 	}
 
@@ -67,12 +67,12 @@ func NewExporter(opts Options) (*Exporter, error) {
 
 // Options contains options for configuring the exporter.
 type Options struct {
-	URL                               string
-	APIToken                          string
-	Prefix                            string
-	DefaultDimensions                 []dimensions.Dimension
-	Logger                            *zap.Logger
-	DisableOneAgentMetadataEnrichment bool
+	URL                                string
+	APIToken                           string
+	Prefix                             string
+	DefaultDimensions                  []dimensions.Dimension
+	Logger                             *zap.Logger
+	DisableDynatraceMetadataEnrichment bool
 
 	MetricNameFormatter func(namespace, name string) string
 }
