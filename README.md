@@ -13,13 +13,11 @@ A more detailed guide on metrics is expected to be added to the OpenTelemetry Go
 The Dynatrace exporter is added and set up like this:
 
 ```go
-  opts := dynatrace.Options{}
-  if token, exists := os.LookupEnv("API_TOKEN"); exists {
-    opts.APIToken = token
-    opts.URL = os.Getenv("ENDPOINT")
-  }
-
-  exporter, err := dynatrace.NewExporter(opts)
+  // No options are required. By default, metrics will be exported to the
+  // OneAgent running locally on the host. If no OneAgent is running,
+  // or if you wish to export directly to your Dynatrace cluster,
+  // APIToken and URL are required.
+  exporter, err := dynatrace.NewExporter(dynatrace.Options{})
   if err != nil{
     panic(err)
   }
@@ -51,6 +49,8 @@ The exporter allows for configuring the following settings by setting them on th
 
 #### Dynatrace API Endpoint
 
+**Optional** - default: local OneAgent endpoint
+
 The endpoint to which the metrics are sent is specified using the `URL` field.
 
 Given an environment ID `myenv123` on Dynatrace SaaS, the [metrics ingest endpoint](https://www.dynatrace.com/support/help/dynatrace-api/environment-api/metric-v2/post-ingest-metrics/) would be `https://myenv123.live.dynatrace.com/api/v2/metrics/ingest`.
@@ -62,6 +62,8 @@ The default metric API endpoint exposed by the OneAgent is `http://localhost:144
 
 #### Dynatrace API Token
 
+**Required only if API endpoint is set**
+
 The Dynatrace API token to be used by the exporter is specified using the `APIToken` field and could, for example, be read from an environment variable.
 
 Creating an API token for your Dynatrace environment is described in the [Dynatrace API documentation](https://www.dynatrace.com/support/help/dynatrace-api/basics/dynatrace-api-authentication/).
@@ -71,13 +73,19 @@ The scope required for sending metrics is the `Ingest metrics` scope in the **AP
 
 #### Metric Key Prefix
 
+**Optional**
+
 The `Prefix` field specifies an optional prefix, which is prepended to each metric key, separated by a dot (`<prefix>.<namespace>.<name>`).
 
 #### Default Labels/Dimensions
 
+**Optional**
+
 The `DefaultDimensions` field can be used to optionally specify a list of key/value pairs, which will be added as additional labels/dimensions to all data points.
 
 #### DisableDynatraceMetadataEnrichment
+
+**Optional**
 
 The `DisableDynatraceMetadataEnrichment` option can be used to disable the Dynatrace metadata detection described below.
 
