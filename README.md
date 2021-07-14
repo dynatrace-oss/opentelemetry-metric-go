@@ -79,7 +79,7 @@ The `DefaultDimensions` field can be used to optionally specify a list of key/va
 
 #### DisableDynatraceMetadataEnrichment
 
-The `DisableDynatraceMetadataEnrichment` can be used to disable the Dynatrace metadata detection described below.
+The `DisableDynatraceMetadataEnrichment` option can be used to disable the Dynatrace metadata detection described below.
 
 ## Dynatrace Metadata Enrichment
 
