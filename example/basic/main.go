@@ -16,6 +16,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 
 	// "go.opentelemetry.io/otel"
@@ -28,19 +29,22 @@ import (
 	"github.com/dynatrace-oss/opentelemetry-metric-go/dynatrace"
 )
 
-func getEnv(name, def string) string {
-	if value, exists := os.LookupEnv(name); exists {
-		return value
+func mustEnv(name string) string {
+	if val, exists := os.LookupEnv(name); exists {
+		return val
 	}
-	return def
+
+	panic(fmt.Sprintf("Missing required environment variable: %s", name))
 }
 
 func main() {
 
 	opts := dynatrace.Options{}
-	if token, exists := os.LookupEnv("API_TOKEN"); exists {
-		opts.APIToken = token
-		opts.URL = os.Getenv("ENDPOINT")
+	// If no endpoint is provided, metrics will be exported to the local OneAgent endpoint
+	if endpoint, exists := os.LookupEnv("ENDPOINT"); exists {
+		opts.URL = endpoint
+		// API token is only required if an endpoint is provided
+		opts.APIToken = mustEnv("API_TOKEN")
 	}
 
 	exporter, err := dynatrace.NewExporter(opts)

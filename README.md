@@ -13,10 +13,10 @@ A more detailed guide on metrics is expected to be added to the OpenTelemetry Go
 The Dynatrace exporter is added and set up like this:
 
 ```go
-  // No options are required. By default, metrics will be exported to the
-  // OneAgent running locally on the host. If no OneAgent is running,
-  // or if you wish to export directly to your Dynatrace cluster,
-  // APIToken and URL are required.
+  // No options are required. By default, the exporter will attempt
+  // to export to the local OneAgent endpoint.
+  // If no OneAgent is running, or if you wish to export directly
+  // to your Dynatrace cluster, APIToken and URL are required.
   exporter, err := dynatrace.NewExporter(dynatrace.Options{})
   if err != nil{
     panic(err)
@@ -49,7 +49,7 @@ The exporter allows for configuring the following settings by setting them on th
 
 #### Dynatrace API Endpoint
 
-**Optional** - default: local OneAgent endpoint
+*Optional* - default: local OneAgent endpoint
 
 The endpoint to which the metrics are sent is specified using the `URL` field.
 
@@ -62,7 +62,7 @@ The default metric API endpoint exposed by the OneAgent is `http://localhost:144
 
 #### Dynatrace API Token
 
-**Required only if API endpoint is set**
+*Required only if API endpoint is set*
 
 The Dynatrace API token to be used by the exporter is specified using the `APIToken` field and could, for example, be read from an environment variable.
 
@@ -73,19 +73,19 @@ The scope required for sending metrics is the `Ingest metrics` scope in the **AP
 
 #### Metric Key Prefix
 
-**Optional**
+*Optional*
 
 The `Prefix` field specifies an optional prefix, which is prepended to each metric key, separated by a dot (`<prefix>.<namespace>.<name>`).
 
 #### Default Labels/Dimensions
 
-**Optional**
+*Optional*
 
 The `DefaultDimensions` field can be used to optionally specify a list of key/value pairs, which will be added as additional labels/dimensions to all data points.
 
 #### DisableDynatraceMetadataEnrichment
 
-**Optional**
+*Optional*
 
 The `DisableDynatraceMetadataEnrichment` option can be used to disable the Dynatrace metadata detection described below.
 
