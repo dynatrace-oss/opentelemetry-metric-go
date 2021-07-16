@@ -47,7 +47,7 @@ func main() {
 	}
 
 	opts := dynatrace.Options{
-		Logger: logger,
+		Logger: logger, // optional
 	}
 	// If no endpoint is provided, metrics will be exported to the local OneAgent endpoint
 	if endpoint, exists := os.LookupEnv("ENDPOINT"); exists {
