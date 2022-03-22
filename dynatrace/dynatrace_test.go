@@ -154,7 +154,7 @@ func TestExporter_TemporalityFor(t *testing.T) {
 		t.Errorf("Should return delta temporality for monotonic counter - got %v", temporality.String())
 	}
 
-	asyncCounterDescriptor := sdkapi.NewDescriptor("", sdkapi.CounterInstrumentKind, number.Float64Kind, "", unit.Bytes)
+	asyncCounterDescriptor := sdkapi.NewDescriptor("", sdkapi.CounterObserverInstrumentKind, number.Float64Kind, "", unit.Bytes)
 	if temporality := e.TemporalityFor(&asyncCounterDescriptor, aggregation.SumKind); temporality != aggregation.DeltaTemporality {
 		t.Errorf("Should return delta temporality for monotonic counter observer - got %v", temporality.String())
 	}
