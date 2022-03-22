@@ -110,7 +110,7 @@ func (e *Exporter) TemporalityFor(desc *sdkapi.Descriptor, kind aggregation.Kind
 	return aggregation.CumulativeTemporality
 }
 
-// Export given CheckpointSet
+// Export a batch of metrics
 func (e *Exporter) Export(ctx context.Context, res *resource.Resource, reader export.InstrumentationLibraryReader) error {
 	lines := []string{}
 
@@ -154,6 +154,7 @@ func (e *Exporter) Export(ctx context.Context, res *resource.Resource, reader ex
 						e.logger.Sugar().Errorw("error creating summary metric from histogram summary",
 							"name", record.Descriptor().Name(),
 							"error", err)
+						return nil
 					}
 
 					line, err := metric.Serialize()
@@ -187,6 +188,7 @@ func (e *Exporter) Export(ctx context.Context, res *resource.Resource, reader ex
 					e.logger.Sugar().Errorw("error creating count metric from sum",
 						"name", record.Descriptor().Name(),
 						"error", err)
+					return nil
 				}
 
 				line, err := metric.Serialize()
@@ -231,7 +233,7 @@ func (e *Exporter) Export(ctx context.Context, res *resource.Resource, reader ex
 					lines = append(lines, line)
 				}
 			} else {
-				e.logger.Sugar().Errorf("Unsupported aggregation",
+				e.logger.Sugar().Errorw("Unsupported aggregation",
 					"aggregator", agg.Kind().String())
 			}
 			return nil
