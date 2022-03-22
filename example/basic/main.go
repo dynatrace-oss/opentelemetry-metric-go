@@ -20,12 +20,11 @@ import (
 	"log"
 	"os"
 
-	// "go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/api/global"
-	"go.opentelemetry.io/otel/api/metric"
-	"go.opentelemetry.io/otel/sdk/metric/controller/push"
-	"go.opentelemetry.io/otel/sdk/metric/processor/basic"
-	"go.opentelemetry.io/otel/sdk/metric/selector/simple"
+	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/sdk/metric/aggregator/histogram"
+	controller "go.opentelemetry.io/otel/sdk/metric/controller/basic"
+	processor "go.opentelemetry.io/otel/sdk/metric/processor/basic"
+	selector "go.opentelemetry.io/otel/sdk/metric/selector/simple"
 	"go.uber.org/zap"
 
 	"github.com/dynatrace-oss/opentelemetry-metric-go/dynatrace"
@@ -65,21 +64,25 @@ func main() {
 
 	defer exporter.Close()
 
-	processor := basic.New(
-		simple.NewWithExactDistribution(),
-		exporter,
+	c := controller.New(
+		processor.NewFactory(
+			selector.NewWithHistogramDistribution(
+				histogram.WithExplicitBoundaries([]float64{1.0, 2.0, 4.0, 8.0}),
+			),
+			exporter,
+			processor.WithMemory(true),
+		),
 	)
 
-	pusher := push.New(
-		processor,
-		exporter,
-	)
+	// global.SetMeterProvider(c)
+	_ = c.Start(context.Background())
 
-	pusher.Start()
-	defer pusher.Stop()
-
-	global.SetMeterProvider(pusher.MeterProvider())
-	meter := global.Meter("otel.dynatrace.com/basic")
-	vr := metric.Must(meter).NewFloat64ValueRecorder("otel.dynatrace.com.golang")
-	vr.Record(context.Background(), 1.0)
+	meter := c.Meter("otel.dynatrace.com/basic")
+	vr := metric.Must(meter).NewFloat64Histogram("otel.dynatrace.com.golang")
+	vr.Record(context.Background(), 0.5)
+	vr.Record(context.Background(), 4.5)
+	vr.Record(context.Background(), 0.5)
+	vr.Record(context.Background(), 2.5)
+	_ = c.Collect(context.Background())
+	_ = c.Stop(context.Background())
 }
