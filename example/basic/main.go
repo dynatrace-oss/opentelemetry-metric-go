@@ -18,7 +18,9 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
+	"time"
 
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/sdk/metric/aggregator/histogram"
@@ -72,17 +74,26 @@ func main() {
 			exporter,
 			processor.WithMemory(true),
 		),
+		controller.WithExporter(exporter),
+		controller.WithCollectPeriod(time.Second*10),
 	)
 
 	// global.SetMeterProvider(c)
 	_ = c.Start(context.Background())
 
 	meter := c.Meter("otel.dynatrace.com/basic")
-	vr := metric.Must(meter).NewFloat64Histogram("otel.dynatrace.com.golang")
-	vr.Record(context.Background(), 0.5)
-	vr.Record(context.Background(), 4.5)
-	vr.Record(context.Background(), 0.5)
-	vr.Record(context.Background(), 2.5)
-	_ = c.Collect(context.Background())
-	_ = c.Stop(context.Background())
+	vr := metric.Must(meter).NewFloat64Histogram("golang_histogram")
+
+	counter := metric.Must(meter).NewInt64Counter("golang_counter")
+	_ = metric.Must(meter).NewFloat64GaugeObserver("golang_gauge", func(ctx context.Context, result metric.Float64ObserverResult) {
+		result.Observe(rand.Float64() * 100)
+	})
+
+	for {
+		counter.Add(context.Background(), int64(rand.Intn(20)))
+		vr.Record(context.Background(), rand.Float64()*10)
+		vr.Record(context.Background(), rand.Float64()*10)
+		vr.Record(context.Background(), rand.Float64()*10)
+		time.Sleep(time.Second * 5)
+	}
 }
