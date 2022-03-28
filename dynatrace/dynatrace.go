@@ -27,10 +27,12 @@ import (
 	"github.com/dynatrace-oss/dynatrace-metric-utils-go/metric/apiconstants"
 	"github.com/dynatrace-oss/dynatrace-metric-utils-go/metric/dimensions"
 	"github.com/dynatrace-oss/dynatrace-metric-utils-go/oneagentenrichment"
-	"go.opentelemetry.io/otel/api/metric"
-	"go.opentelemetry.io/otel/label"
-	export "go.opentelemetry.io/otel/sdk/export/metric"
-	"go.opentelemetry.io/otel/sdk/export/metric/aggregation"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric/sdkapi"
+	"go.opentelemetry.io/otel/sdk/instrumentation"
+	"go.opentelemetry.io/otel/sdk/metric/export"
+	"go.opentelemetry.io/otel/sdk/metric/export/aggregation"
+	"go.opentelemetry.io/otel/sdk/resource"
 	"go.uber.org/zap"
 )
 
@@ -95,72 +97,156 @@ func defaultFormatter(namespace, name string) string {
 	return name
 }
 
-// ExportKindFor returns export.DeltaExporter for statsd-derived exporters
-func (e *Exporter) ExportKindFor(*metric.Descriptor, aggregation.Kind) export.ExportKind {
-	return export.DeltaExporter
+// TemporalityFor returns delta for histograms and monotonic counters, else cumulative
+func (e *Exporter) TemporalityFor(desc *sdkapi.Descriptor, kind aggregation.Kind) aggregation.Temporality {
+	if kind == aggregation.HistogramKind {
+		return aggregation.DeltaTemporality
+	}
+
+	if desc.InstrumentKind().Adding() && desc.InstrumentKind().Monotonic() {
+		return aggregation.DeltaTemporality
+	}
+
+	return aggregation.CumulativeTemporality
 }
 
-// Export given CheckpointSet
-func (e *Exporter) Export(ctx context.Context, cs export.CheckpointSet) error {
-	// TODO tags
-	// TODO normalize
+// Export a batch of metrics
+func (e *Exporter) Export(ctx context.Context, res *resource.Resource, reader export.InstrumentationLibraryReader) error {
 	lines := []string{}
 
-	err := cs.ForEach(e, func(r export.Record) error {
-		itr := label.NewMergeIterator(r.Labels(), r.Resource().LabelSet())
-		dims := []dimensions.Dimension{}
-		for itr.Next() {
-			label := itr.Label()
-			dims = append(dims, dimensions.NewDimension(string(label.Key), label.Value.Emit()))
-		}
+	_ = reader.ForEach(func(l instrumentation.Library, reader export.Reader) error {
+		return reader.ForEach(e, func(record export.Record) error {
+			dims := []dimensions.Dimension{}
+			iter := attribute.NewMergeIterator(record.Labels(), res.Set())
 
-		valOpt, err := getValueOption(r)
+			for iter.Next() {
+				label := iter.Label()
+				dims = append(dims, NewDimension(string(label.Key), label.Value.AsString()))
+			}
 
-		if err != nil {
-			e.logger.Warn(fmt.Sprintf("failed to normalize metric: %s - %s", r.Descriptor().Name(), err.Error()))
+			agg := record.Aggregation()
+
+			dtDimensions := dimensions.MergeLists(
+				e.defaultDimensions,
+				dimensions.NewNormalizedDimensionList(dims...),
+				e.staticDimensions,
+			)
+
+			if hist, ok := agg.(aggregation.Histogram); ok {
+				summary, err := summaryFromHistogram(hist, record.Descriptor().NumberKind())
+
+				if err != nil {
+					e.logger.Sugar().Errorw("error converting histogram to dt summary",
+						"name", record.Descriptor().Name(),
+						"error", err)
+					return nil
+				}
+
+				if summary != nil {
+					metric, err := dtMetric.NewMetric(
+						record.Descriptor().Name(),
+						dtMetric.WithPrefix(e.opts.Prefix),
+						dtMetric.WithDimensions(dtDimensions),
+						summary,
+					)
+
+					if err != nil {
+						e.logger.Sugar().Errorw("error creating summary metric from histogram summary",
+							"name", record.Descriptor().Name(),
+							"error", err)
+						return nil
+					}
+
+					line, err := metric.Serialize()
+					if err != nil {
+						e.logger.Sugar().Errorw("error serializing histogram summary metric",
+							"name", record.Descriptor().Name(),
+							"error", err)
+					}
+					if line != "" {
+						lines = append(lines, line)
+					}
+				}
+			} else if sum, ok := agg.(aggregation.Sum); ok {
+				valOpt, err := valueOptForSum(sum, record.Descriptor().InstrumentKind().Monotonic(), record.Descriptor().NumberKind())
+
+				if err != nil {
+					e.logger.Sugar().Errorw("error creating dtMetric option for sum",
+						"name", record.Descriptor().Name(),
+						"error", err)
+					return nil
+				}
+
+				metric, err := dtMetric.NewMetric(
+					record.Descriptor().Name(),
+					dtMetric.WithPrefix(e.opts.Prefix),
+					dtMetric.WithDimensions(dtDimensions),
+					valOpt,
+				)
+
+				if err != nil {
+					e.logger.Sugar().Errorw("error creating count metric from sum",
+						"name", record.Descriptor().Name(),
+						"error", err)
+					return nil
+				}
+
+				line, err := metric.Serialize()
+				if err != nil {
+					e.logger.Sugar().Errorw("error serializing count metric",
+						"name", record.Descriptor().Name(),
+						"error", err)
+				}
+				if line != "" {
+					lines = append(lines, line)
+				}
+			} else if agg, ok := agg.(aggregation.LastValue); ok {
+				lastValue, ts, err := agg.LastValue()
+				if err != nil {
+					e.logger.Sugar().Errorw("error converting sum to dt counter",
+						"name", record.Descriptor().Name(),
+						"error", err)
+					return nil
+				}
+
+				metric, err := dtMetric.NewMetric(
+					record.Descriptor().Name(),
+					dtMetric.WithPrefix(e.opts.Prefix),
+					dtMetric.WithDimensions(dtDimensions),
+					dtMetric.WithFloatGaugeValue(lastValue.CoerceToFloat64(record.Descriptor().NumberKind())),
+					dtMetric.WithTimestamp(ts),
+				)
+
+				if err != nil {
+					e.logger.Sugar().Errorw("error creating gauge metric from last value",
+						"name", record.Descriptor().Name(),
+						"error", err)
+				}
+
+				line, err := metric.Serialize()
+				if err != nil {
+					e.logger.Sugar().Errorw("error serializing gauge metric",
+						"name", record.Descriptor().Name(),
+						"error", err)
+				}
+				if line != "" {
+					lines = append(lines, line)
+				}
+			} else {
+				e.logger.Sugar().Errorw("Unsupported aggregation",
+					"aggregator", agg.Kind().String())
+			}
 			return nil
-		}
-
-		metric, err := dtMetric.NewMetric(
-			r.Descriptor().Name(),
-			dtMetric.WithPrefix(e.opts.Prefix),
-			dtMetric.WithDimensions(
-				dimensions.MergeLists(
-					e.defaultDimensions,
-					dimensions.NewNormalizedDimensionList(dims...),
-					e.staticDimensions,
-				),
-			),
-			valOpt,
-		)
-
-		if err != nil {
-			e.logger.Warn(fmt.Sprintf("failed to normalize metric: %s - %s", r.Descriptor().Name(), err.Error()))
-			return nil
-		}
-
-		line, err := metric.Serialize()
-
-		if err != nil {
-			e.logger.Warn(fmt.Sprintf("failed to serialize metric: %s - %s", r.Descriptor().Name(), err.Error()))
-			return nil
-		}
-
-		lines = append(lines, line)
-
-		return nil
+		})
 	})
 
-	if err != nil {
-		return fmt.Errorf("error generating metric lines: %s", err.Error())
-	}
 	limit := apiconstants.GetPayloadLinesLimit()
 	for i := 0; i < len(lines); i += limit {
 		batch := lines[i:min(i+limit, len(lines))]
 
 		output := strings.Join(batch, "\n")
 		if output != "" {
-			err = e.send(output)
+			err := e.send(output)
 			if err != nil {
 				return fmt.Errorf("error processing data:, %s", err.Error())
 			}
@@ -168,53 +254,6 @@ func (e *Exporter) Export(ctx context.Context, cs export.CheckpointSet) error {
 	}
 
 	return nil
-}
-
-func getValueOption(r export.Record) (dtMetric.MetricOption, error) {
-	switch agg := r.Aggregation().(type) {
-	case aggregation.MinMaxSumCount:
-		min, err := agg.Min()
-		if err != nil {
-			return nil, fmt.Errorf("error getting min for %s: %w", r.Descriptor().Name(), err)
-		}
-
-		max, err := agg.Max()
-		if err != nil {
-			return nil, fmt.Errorf("error getting max for %s: %w", r.Descriptor().Name(), err)
-		}
-
-		sum, err := agg.Sum()
-		if err != nil {
-			return nil, fmt.Errorf("error getting sum for %s: %w", r.Descriptor().Name(), err)
-		}
-
-		count, err := agg.Count()
-		if err != nil {
-			return nil, fmt.Errorf("error getting count for %s: %w", r.Descriptor().Name(), err)
-		}
-
-		switch r.Descriptor().NumberKind() {
-		case metric.Float64NumberKind:
-			return dtMetric.WithFloatSummaryValue(min.AsFloat64(), max.AsFloat64(), sum.AsFloat64(), count), nil
-		case metric.Int64NumberKind:
-			return dtMetric.WithIntSummaryValue(min.AsInt64(), max.AsInt64(), sum.AsInt64(), count), nil
-		}
-
-	case aggregation.Sum:
-		val, err := agg.Sum()
-		if err != nil {
-			return nil, fmt.Errorf("error getting LastValue for %s: %w", r.Descriptor().Name(), err)
-		}
-
-		switch r.Descriptor().NumberKind() {
-		case metric.Float64NumberKind:
-			return dtMetric.WithFloatCounterValueDelta(val.AsFloat64()), nil
-		case metric.Int64NumberKind:
-			return dtMetric.WithIntCounterValueDelta(val.AsInt64()), nil
-		}
-	}
-
-	return nil, fmt.Errorf("unknown aggregation for %s: %s", r.Descriptor().Name(), r.Aggregation().Kind().String())
 }
 
 func (e *Exporter) send(message string) error {

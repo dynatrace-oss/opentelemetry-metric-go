@@ -18,14 +18,15 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
+	"time"
 
-	// "go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/api/global"
-	"go.opentelemetry.io/otel/api/metric"
-	"go.opentelemetry.io/otel/sdk/metric/controller/push"
-	"go.opentelemetry.io/otel/sdk/metric/processor/basic"
-	"go.opentelemetry.io/otel/sdk/metric/selector/simple"
+	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/sdk/metric/aggregator/histogram"
+	controller "go.opentelemetry.io/otel/sdk/metric/controller/basic"
+	processor "go.opentelemetry.io/otel/sdk/metric/processor/basic"
+	selector "go.opentelemetry.io/otel/sdk/metric/selector/simple"
 	"go.uber.org/zap"
 
 	"github.com/dynatrace-oss/opentelemetry-metric-go/dynatrace"
@@ -65,21 +66,34 @@ func main() {
 
 	defer exporter.Close()
 
-	processor := basic.New(
-		simple.NewWithExactDistribution(),
-		exporter,
+	c := controller.New(
+		processor.NewFactory(
+			selector.NewWithHistogramDistribution(
+				histogram.WithExplicitBoundaries([]float64{1.0, 2.0, 4.0, 8.0}),
+			),
+			exporter,
+			processor.WithMemory(true),
+		),
+		controller.WithExporter(exporter),
+		controller.WithCollectPeriod(time.Second*10),
 	)
 
-	pusher := push.New(
-		processor,
-		exporter,
-	)
+	// global.SetMeterProvider(c)
+	_ = c.Start(context.Background())
 
-	pusher.Start()
-	defer pusher.Stop()
+	meter := c.Meter("otel.dynatrace.com/basic")
+	vr := metric.Must(meter).NewFloat64Histogram("golang_histogram")
 
-	global.SetMeterProvider(pusher.MeterProvider())
-	meter := global.Meter("otel.dynatrace.com/basic")
-	vr := metric.Must(meter).NewFloat64ValueRecorder("otel.dynatrace.com.golang")
-	vr.Record(context.Background(), 1.0)
+	counter := metric.Must(meter).NewInt64Counter("golang_counter")
+	_ = metric.Must(meter).NewFloat64GaugeObserver("golang_gauge", func(ctx context.Context, result metric.Float64ObserverResult) {
+		result.Observe(rand.Float64() * 100)
+	})
+
+	for {
+		counter.Add(context.Background(), int64(rand.Intn(20)))
+		vr.Record(context.Background(), rand.Float64()*10)
+		vr.Record(context.Background(), rand.Float64()*10)
+		vr.Record(context.Background(), rand.Float64()*10)
+		time.Sleep(time.Second * 5)
+	}
 }
