@@ -7,6 +7,26 @@ on:
   pull_request:
 
 jobs:
+  lint:
+    strategy:
+      fail-fast: true
+      matrix:
+        go:
+          - '1.17'
+          - '1.18'
+
+    runs-on: ubuntu-latest
+
+    name: Lint Go ${{ matrix.go }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Lint Go ${{ matrix.go }}
+        uses: actions/setup-go@v3
+        with:
+          go-version: ${{ matrix.go }}
+      - run: go version
+      - run: test -z $(gofmt -l .)
+
   build:
     strategy:
       matrix:
@@ -22,11 +42,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+      - name: Build and Test go ${{ matrix.go }}
       - uses: actions/setup-go@v3
         with:
           go-version: ${{ matrix.go }}
 
       - run: go version
       - run: go build ./...
-      - run: test -z $(gofmt -l .)
       - run: go test ./...
