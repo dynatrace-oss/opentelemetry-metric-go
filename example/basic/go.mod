@@ -3,7 +3,7 @@ module github.com/dynatrace-oss/opentelemetry-metric-go/example/basic
 go 1.15
 
 require (
-	github.com/dynatrace-oss/opentelemetry-metric-go v0.1.0-beta
+	github.com/dynatrace-oss/opentelemetry-metric-go v0.4.0
 	go.opentelemetry.io/otel v1.5.0 // indirect
 	go.opentelemetry.io/otel/metric v0.27.0
 	go.opentelemetry.io/otel/sdk/metric v0.27.0
