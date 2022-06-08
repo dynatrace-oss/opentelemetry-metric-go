@@ -50,3 +50,10 @@ jobs:
       - run: go version
       - run: go build ./...
       - run: go test ./...
+
+  all-passed:
+    needs: [ lint, build ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: All checks passed
+        run: 'true'
