@@ -1,21 +1,59 @@
 name: Unit Test
 
-on:  
+on:
   push:
     branches:
       - main
   pull_request:
 
 jobs:
-  build:
+  lint:
+    strategy:
+      fail-fast: true
+      matrix:
+        go:
+          - '1.17'
+          - '1.18'
+
     runs-on: ubuntu-latest
+
+    name: Lint Go ${{ matrix.go }}
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-go@v2
+      - uses: actions/checkout@v3
+      - name: Lint Go ${{ matrix.go }}
+        uses: actions/setup-go@v3
         with:
-          go-version: '^1.15.5' # The Go version to download (if necessary) and use.
+          go-version: ${{ matrix.go }}
+      - run: go version
+      - run: test -z $(gofmt -l .)
+
+  build:
+    strategy:
+      matrix:
+        go:
+          - '1.17'
+          - '1.18'
+        os:
+          - 'ubuntu-latest'
+          - 'windows-latest'
+          - 'macos-latest'
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build and Test go ${{ matrix.go }}
+        uses: actions/setup-go@v3
+        with:
+          go-version: ${{ matrix.go }}
 
       - run: go version
       - run: go build ./...
-      - run: test -z $(gofmt -l .)
       - run: go test ./...
+
+  all-passed:
+    needs: [ lint, build ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: All checks passed
+        run: 'true'
