@@ -10,7 +10,7 @@ require (
 )
 
 require (
-	github.com/dynatrace-oss/dynatrace-metric-utils-go v0.4.0 // indirect
+	github.com/dynatrace-oss/dynatrace-metric-utils-go v0.5.0 // indirect
 	github.com/go-logr/logr v1.2.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	go.opentelemetry.io/otel v1.5.0 // indirect
