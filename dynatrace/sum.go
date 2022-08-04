@@ -2,8 +2,8 @@ package dynatrace
 
 import (
 	"github.com/dynatrace-oss/dynatrace-metric-utils-go/metric"
-	"go.opentelemetry.io/otel/metric/number"
 	"go.opentelemetry.io/otel/sdk/metric/export/aggregation"
+	"go.opentelemetry.io/otel/sdk/metric/number"
 )
 
 func valueOptForSum(sum aggregation.Sum, monotonic bool, kind number.Kind) (metric.MetricOption, error) {

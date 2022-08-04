@@ -22,7 +22,7 @@ import (
 	"os"
 	"time"
 
-	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/metric/instrument"
 	"go.opentelemetry.io/otel/sdk/metric/aggregator/histogram"
 	controller "go.opentelemetry.io/otel/sdk/metric/controller/basic"
 	processor "go.opentelemetry.io/otel/sdk/metric/processor/basic"
@@ -82,12 +82,26 @@ func main() {
 	_ = c.Start(context.Background())
 
 	meter := c.Meter("otel.dynatrace.com/basic")
-	vr := metric.Must(meter).NewFloat64Histogram("golang_histogram")
+	vr, err := meter.SyncFloat64().Histogram("golang_histogram")
+	if err != nil {
+		panic(err)
+	}
 
-	counter := metric.Must(meter).NewInt64Counter("golang_counter")
-	_ = metric.Must(meter).NewFloat64GaugeObserver("golang_gauge", func(ctx context.Context, result metric.Float64ObserverResult) {
-		result.Observe(rand.Float64() * 100)
+	counter, err := meter.SyncInt64().Counter("golang_counter")
+	if err != nil {
+		panic(err)
+	}
+
+	gauge, err := meter.AsyncFloat64().Gauge("golang_gauge")
+	if err != nil {
+		panic(err)
+	}
+	err = meter.RegisterCallback([]instrument.Asynchronous{gauge}, func(ctx context.Context) {
+		gauge.Observe(ctx, rand.Float64()*100)
 	})
+	if err != nil {
+		panic(err)
+	}
 
 	for {
 		counter.Add(context.Background(), int64(rand.Intn(20)))
