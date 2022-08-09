@@ -28,10 +28,10 @@ import (
 	"github.com/dynatrace-oss/dynatrace-metric-utils-go/metric/dimensions"
 	"github.com/dynatrace-oss/dynatrace-metric-utils-go/oneagentenrichment"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/metric/sdkapi"
 	"go.opentelemetry.io/otel/sdk/instrumentation"
 	"go.opentelemetry.io/otel/sdk/metric/export"
 	"go.opentelemetry.io/otel/sdk/metric/export/aggregation"
+	"go.opentelemetry.io/otel/sdk/metric/sdkapi"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.uber.org/zap"
 )
@@ -117,7 +117,7 @@ func (e *Exporter) Export(ctx context.Context, res *resource.Resource, reader ex
 	_ = reader.ForEach(func(l instrumentation.Library, reader export.Reader) error {
 		return reader.ForEach(e, func(record export.Record) error {
 			dims := []dimensions.Dimension{}
-			iter := attribute.NewMergeIterator(record.Labels(), res.Set())
+			iter := attribute.NewMergeIterator(record.Attributes(), res.Set())
 
 			for iter.Next() {
 				label := iter.Label()
