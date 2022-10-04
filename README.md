@@ -98,7 +98,10 @@ Therefore, if no endpoint is specified, a OneAgent is assumed to be running and 
 Due to implementation details of the Go runtime and the OneAgent, it is currently not possible to read metadata on Unix/Linux systems,
 therefore OneAgent enrichment for Go only functions on Windows hosts at this time.
 
-## Non-string Attributes
+#### Typed attributes support
 
-Any non-string attributes will be dropped.
-If you need these attributes, please cast them to strings.
+The OpenTelemetry Metrics API for Go supports the concept of [Attributes]( https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/common/common.md#attributes).
+These attributes consist of key-value pairs, where the keys are strings and the values are either primitive types or arrays of uniform primitive types.
+
+At the moment, this exporter **only supports attributes with string key and value type**.
+This means that if attributes of any other type are used, they will be **ignored** and **only** the string-valued attributes are going to be sent to Dynatrace.
