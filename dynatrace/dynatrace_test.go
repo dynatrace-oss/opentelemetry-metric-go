@@ -570,7 +570,11 @@ func TestExporter_Export_NonStringDims(t *testing.T) {
 
 	desc := metrictest.NewDescriptor("name", sdkapi.CounterInstrumentKind, number.Float64Kind)
 	sums := sum.New(2)
-	attrs := attribute.NewSet(attribute.KeyValue{Key: "int_dim", Value: attribute.Int64Value(10)})
+	attrs := attribute.NewSet(
+		attribute.KeyValue{Key: "int_dim", Value: attribute.Int64Value(10)},
+		attribute.KeyValue{Key: "bool_dim", Value: attribute.BoolValue(true)},
+		attribute.KeyValue{Key: "float_dim", Value: attribute.Float64Value(10.5)},
+	)
 	agg, ckpt := &sums[0], &sums[1]
 
 	require.NoError(t, agg.Update(context.Background(), number.NewFloat64Number(1), &desc))
