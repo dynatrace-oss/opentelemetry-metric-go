@@ -121,7 +121,10 @@ func (e *Exporter) Export(ctx context.Context, res *resource.Resource, reader ex
 
 			for iter.Next() {
 				label := iter.Label()
-				dims = append(dims, NewDimension(string(label.Key), label.Value.AsString()))
+				// Drop non-string values
+				if label.Value.Type() == attribute.STRING {
+					dims = append(dims, NewDimension(string(label.Key), label.Value.AsString()))
+				}
 			}
 
 			agg := record.Aggregation()

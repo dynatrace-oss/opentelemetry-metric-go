@@ -545,3 +545,48 @@ func TestExporter_Export_Counter_StaticDims(t *testing.T) {
 
 	e.Export(context.Background(), resource.Empty(), reader)
 }
+
+func TestExporter_Export_NonStringDims(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		body, err := ioutil.ReadAll(req.Body)
+		if err != nil {
+			t.Error("Failed to read body")
+		}
+
+		descriptor := strings.Split(string(body), " ")[0]
+		expect := "name"
+		if descriptor != expect {
+			t.Errorf("Expected metric descriptor %#v to equal %#v", descriptor, expect)
+		}
+
+		fmt.Fprintln(rw, "")
+	}))
+	defer server.Close()
+	e := &Exporter{
+		opts:   Options{URL: server.URL, APIToken: "token"},
+		client: server.Client(),
+		logger: zap.L(),
+	}
+
+	desc := metrictest.NewDescriptor("name", sdkapi.CounterInstrumentKind, number.Float64Kind)
+	sums := sum.New(2)
+	attrs := attribute.NewSet(
+		attribute.KeyValue{Key: "int_dim", Value: attribute.Int64Value(10)},
+		attribute.KeyValue{Key: "bool_dim", Value: attribute.BoolValue(true)},
+		attribute.KeyValue{Key: "float_dim", Value: attribute.Float64Value(10.5)},
+	)
+	agg, ckpt := &sums[0], &sums[1]
+
+	require.NoError(t, agg.Update(context.Background(), number.NewFloat64Number(1), &desc))
+	require.NoError(t, agg.Update(context.Background(), number.NewFloat64Number(10), &desc))
+
+	require.NoError(t, agg.SynchronizedMove(ckpt, &desc))
+
+	reader := processortest.MultiInstrumentationLibraryReader(map[instrumentation.Library][]export.Record{
+		{
+			Name: "mylib",
+		}: {export.NewRecord(&desc, &attrs, ckpt.Aggregation(), intervalStart, intervalEnd)},
+	})
+
+	e.Export(context.Background(), resource.Empty(), reader)
+}
