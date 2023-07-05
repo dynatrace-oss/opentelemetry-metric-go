@@ -1,3 +1,5 @@
+# Dynatrace
+
 [Dynatrace](https://www.dynatrace.com/integrations/opentelemetry) supports native
 OpenTelemetry protocol (OTLP) ingest for traces, metrics and logs.
 All signals can be sent directly to Dynatrace via **OTLP protobuf over HTTP**
@@ -5,7 +7,8 @@ using the built-in OTLP/HTTP Exporter available in the OpenTelemetry Go SDK.
 More information on configuring your Go applications to use the OTLP exporter can be found in the
 [Dynatrace documentation](https://www.dynatrace.com/support/help/shortlink/otel-wt-go#tabgroup--dynatrace-docs--otlp-export).
 
-# Dynatrace OpenTelemetry Metrics Exporter for Go
+## Dynatrace OpenTelemetry Metrics Exporter for Go
+![Static Badge](https://img.shields.io/badge/status-deprecated-orange)
 
 > **Warning**
 > Dynatrace supports native OpenTelemetry protocol (OTLP) ingest for traces, metrics and logs.
@@ -16,7 +19,7 @@ More information on configuring your Go applications to use the OTLP exporter ca
 > Please refer to the [migration guide](https://www.dynatrace.com/support/help/shortlink/migrating-dynatrace-metrics-exporter-otlp-exporter#migrate-applications) for instructions on how to migrate to the OTLP HTTP exporter, as well as reasoning and benefits for this transition. For an example on how to configure the OTLP exporter in a Go application, check out the [Go integration walk-through](https://www.dynatrace.com/support/help/shortlink/otel-wt-go#tabgroup--dynatrace-docs--otlp-export)
 > page in the Dynatrace documentation.
 
-## Getting started
+### Getting started
 
 > This exporter is based on the OpenTelemetry Metrics SDK for Go, which is currently in an alpha state and neither considered stable nor complete as of this writing.
 > As such, this exporter is not intended for production use until the underlying OpenTelemetry Metrics API and SDK are stable.
@@ -59,11 +62,11 @@ The Dynatrace exporter is added and set up like this:
 
 A full setup is provided in our [example project](./example/basic/).
 
-### Configuration
+#### Configuration
 
 The exporter allows for configuring the following settings by setting them on the `dynatrace.Options` struct:
 
-#### Dynatrace API Endpoint
+##### Dynatrace API Endpoint
 
 *Optional* - default: local OneAgent endpoint
 
@@ -76,7 +79,7 @@ This feature is currently in an Early Adopter phase and has to be enabled as des
 Using the local API endpoint, the host ID and host name context are automatically added to each metric as dimensions.
 The default metric API endpoint exposed by the OneAgent is `http://localhost:14499/metrics/ingest`.
 
-#### Dynatrace API Token
+##### Dynatrace API Token
 
 *Required only if API endpoint is set*
 
@@ -85,25 +88,25 @@ The Dynatrace API token to be used by the exporter is specified using the `APITo
 Creating an API token for your Dynatrace environment is described in the [Dynatrace API documentation](https://www.dynatrace.com/support/help/dynatrace-api/basics/dynatrace-api-authentication/).
 The permission required for sending metrics is `Ingest metrics` (`metrics.ingest`) and it is recommended to limit scope to only this permission.
 
-#### Metric Key Prefix
+##### Metric Key Prefix
 
 *Optional*
 
 The `Prefix` field specifies an optional prefix, which is prepended to each metric key, separated by a dot (`<prefix>.<namespace>.<name>`).
 
-#### Default Labels/Dimensions
+##### Default Labels/Dimensions
 
 *Optional*
 
 The `DefaultDimensions` field can be used to optionally specify a list of key/value pairs, which will be added as additional labels/dimensions to all data points.
 
-#### DisableDynatraceMetadataEnrichment
+##### DisableDynatraceMetadataEnrichment
 
 *Optional*
 
 The `DisableDynatraceMetadataEnrichment` option can be used to disable the Dynatrace metadata detection described below.
 
-## Dynatrace Metadata Enrichment
+### Dynatrace Metadata Enrichment
 
 If running on a host with a running OneAgent, the exporter will export metadata collected by the OneAgent to the Dynatrace endpoint.
 This typically consists of the Dynatrace host ID and process group ID.
@@ -114,7 +117,7 @@ Therefore, if no endpoint is specified, a OneAgent is assumed to be running and 
 Due to implementation details of the Go runtime and the OneAgent, it is currently not possible to read metadata on Unix/Linux systems,
 therefore OneAgent enrichment for Go only functions on Windows hosts at this time.
 
-#### Typed attributes support
+##### Typed attributes support
 
 The OpenTelemetry Metrics API for Go supports the concept of [Attributes](https://github.com/open-telemetry/opentelemetry-specification/tree/main/specification/common#attribute).
 These attributes consist of key-value pairs, where the keys are strings and the values are either primitive types or arrays of uniform primitive types.
